@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pueblo Esther — Reclamos Vecinales</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --verde: #2d7a4f;
+    --verde-claro: #e8f5ed;
+    --verde-borde: #a8d5b8;
+    --azul: #185FA5;
+    --rojo: #c0392b;
+    --naranja: #d35400;
+    --amarillo: #d4a017;
+    --texto: #1a1a1a;
+    --texto-suave: #555;
+    --borde: #ddd;
+    --fondo: #f7f9f7;
+    --blanco: #ffffff;
+    --radio: 8px;
+  }
+  html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--fondo); color: var(--texto); }
+
+  /* HEADER */
+  #header {
+    background: var(--verde);
+    color: white;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  #header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  #header p { font-size: 12px; opacity: 0.85; }
+  #header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #user-info { font-size: 12px; opacity: 0.9; }
+  #btn-login { background: white; color: var(--verde); border: none; border-radius: var(--radio); padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  #btn-login:hover { background: #e8f5ed; }
+  #btn-logout { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.5); border-radius: var(--radio); padding: 6px 12px; font-size: 12px; cursor: pointer; }
+
+  /* FILTROS */
+  #filtros {
+    background: white;
+    border-bottom: 1px solid var(--borde);
+    padding: 8px 16px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    position: relative;
+    z-index: 900;
+    scrollbar-width: none;
+  }
+  #filtros::-webkit-scrollbar { display: none; }
+  .filtro-btn {
+    white-space: nowrap;
+    border: 1.5px solid var(--borde);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    background: white;
+    color: var(--texto-suave);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .filtro-btn:hover { border-color: var(--verde); color: var(--verde); }
+  .filtro-btn.activo { background: var(--verde); color: white; border-color: var(--verde); }
+
+  /* LAYOUT */
+  #layout { display: flex; height: calc(100vh - 110px); }
+  #mapa { flex: 1; }
+  #panel { width: 300px; background: white; border-left: 1px solid var(--borde); display: flex; flex-direction: column; overflow: hidden; }
+
+  /* PANEL */
+  #panel-tabs { display: flex; border-bottom: 1px solid var(--borde); }
+  .tab-btn { flex: 1; padding: 10px; font-size: 13px; font-weight: 500; background: none; border: none; cursor: pointer; color: var(--texto-suave); border-bottom: 2px solid transparent; font-family: inherit; }
+  .tab-btn.activo { color: var(--verde); border-bottom-color: var(--verde); }
+
+  #panel-contenido { flex: 1; overflow-y: auto; }
+
+  /* FORMULARIO */
+  #tab-form { padding: 16px; display: none; }
+  #tab-form.visible { display: block; }
+  .campo { margin-bottom: 12px; }
+  .campo label { display: block; font-size: 12px; font-weight: 500; color: var(--texto-suave); margin-bottom: 4px; }
+  .campo input, .campo select, .campo textarea {
+    width: 100%;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--texto);
+    background: white;
+    resize: none;
+  }
+  .campo input:focus, .campo select:focus, .campo textarea:focus { outline: none; border-color: var(--verde); box-shadow: 0 0 0 2px rgba(45,122,79,0.15); }
+  .campo textarea { height: 72px; }
+
+  #hint-mapa {
+    background: #e8f0fb;
+    color: var(--azul);
+    border-radius: var(--radio);
+    padding: 8px 10px;
+    font-size: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #hint-mapa.ok { background: var(--verde-claro); color: var(--verde); }
+
+  #btn-enviar {
+    width: 100%;
+    background: var(--verde);
+    color: white;
+    border: none;
+    border-radius: var(--radio);
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  #btn-enviar:hover { background: #226040; }
+  #btn-enviar:disabled { background: #b0c4b8; cursor: not-allowed; }
+
+  #auth-requerido {
+    background: var(--verde-claro);
+    border: 1px solid var(--verde-borde);
+    border-radius: var(--radio);
+    padding: 14px;
+    margin-bottom: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--verde);
+    display: none;
+  }
+  #auth-requerido button { margin-top: 8px; background: var(--verde); color: white; border: none; border-radius: var(--radio); padding: 7px 16px; font-size: 13px; cursor: pointer; font-family: inherit; }
+
+  /* LISTA */
+  #tab-lista { padding: 12px; display: none; }
+  #tab-lista.visible { display: block; }
+  #lista-reclamos { display: flex; flex-direction: column; gap: 8px; }
+  .reclamo-card {
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .reclamo-card:hover { border-color: var(--verde); }
+  .reclamo-card .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; border-radius: 4px; padding: 2px 7px; font-weight: 500; margin-bottom: 5px; }
+  .reclamo-card .desc { font-size: 13px; color: var(--texto); margin-bottom: 4px; line-height: 1.4; }
+  .reclamo-card .meta { font-size: 11px; color: var(--texto-suave); }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--texto-suave); font-size: 13px; }
+
+  /* CONTADOR */
+  #contadores { display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--borde); }
+  .contador { flex: 1; text-align: center; }
+  .contador .num { font-size: 20px; font-weight: 700; color: var(--verde); }
+  .contador .lbl { font-size: 10px; color: var(--texto-suave); }
+
+  /* MODAL */
+  #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  #modal-overlay.visible { display: flex; }
+  #modal { background: white; border-radius: 12px; padding: 24px; max-width: 420px; width: 100%; }
+  #modal h2 { font-size: 17px; margin-bottom: 8px; }
+  #modal p { font-size: 13px; color: var(--texto-suave); margin-bottom: 16px; line-height: 1.5; }
+  .modal-btns { display: flex; gap: 8px; flex-direction: column; }
+  .modal-btn { padding: 10px 14px; border-radius: var(--radio); border: 1.5px solid var(--borde); font-size: 14px; font-weight: 500; cursor: pointer; background: white; font-family: inherit; display: flex; align-items: center; gap: 8px; }
+  .modal-btn:hover { background: var(--fondo); }
+  .modal-btn.google { border-color: #4285F4; color: #4285F4; }
+  .modal-btn.verde { background: var(--verde); color: white; border-color: var(--verde); }
+  .modal-btn.cancelar { color: var(--texto-suave); }
+  #modal-form-campos { display: none; }
+  #modal-form-campos.visible { display: block; }
+
+  /* CATEGORÍA COLORES */
+  .cat-bache    { background: #fde8e3; color: #8b2500; }
+  .cat-luz      { background: #fef3d0; color: #7a4a00; }
+  .cat-agua     { background: #ddeeff; color: #003d80; }
+  .cat-basura   { background: #e5f2d8; color: #2a5a00; }
+  .cat-seguridad{ background: #fde8e8; color: #8b0000; }
+  .cat-verde    { background: #d8f0e5; color: #0a5030; }
+  .cat-otro     { background: #eeeeee; color: #444; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 3000; display: none; white-space: nowrap; }
+  #toast.visible { display: block; }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    #layout { flex-direction: column; height: auto; }
+    #mapa { height: 50vh; }
+    #panel { width: 100%; height: auto; max-height: 50vh; border-left: none; border-top: 1px solid var(--borde); }
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>📍 Pueblo Esther — Reclamos vecinales</h1>
+    <p>Marcá un problema en el mapa y ayudá a mejorar el barrio</p>
+  </div>
+  <div id="header-right">
+    <span id="user-info"></span>
+    <button id="btn-login" onclick="abrirLogin()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+      Ingresar
+    </button>
+    <button id="btn-logout" onclick="cerrarSesion()" style="display:none">Salir</button>
+  </div>
+</div>
+
+<div id="filtros">
+  <button class="filtro-btn activo" onclick="filtrar('todos')">🗺 Todos</button>
+  <button class="filtro-btn" onclick="filtrar('Bache / calles')">🕳 Baches</button>
+  <button class="filtro-btn" onclick="filtrar('Iluminación')">💡 Iluminación</button>
+  <button class="filtro-btn" onclick="filtrar('Agua / cloacas')">💧 Agua</button>
+  <button class="filtro-btn" onclick="filtrar('Basura / residuos')">🗑 Basura</button>
+  <button class="filtro-btn" onclick="filtrar('Seguridad')">🚨 Seguridad</button>
+  <button class="filtro-btn" onclick="filtrar('Espacios verdes')">🌳 Espacios verdes</button>
+  <button class="filtro-btn" onclick="filtrar('Otro')">📌 Otro</button>
+</div>
+
+<div id="layout">
+  <div id="mapa"></div>
+  <div id="panel">
+    <div id="contadores">
+      <div class="contador"><div class="num" id="cnt-total">—</div><div class="lbl">reclamos</div></div>
+      <div class="contador"><div class="num" id="cnt-semana">—</div><div class="lbl">esta semana</div></div>
+      <div class="contador"><div class="num" id="cnt-mes">—</div><div class="lbl">este mes</div></div>
+    </div>
+    <div id="panel-tabs">
+      <button class="tab-btn activo" onclick="cambiarTab('form')">➕ Nuevo</button>
+      <button class="tab-btn" onclick="cambiarTab('lista')">📋 Reclamos</button>
+    </div>
+    <div id="panel-contenido">
+      <div id="tab-form" class="visible">
+        <div id="auth-requerido">
+          <strong>Ingresá para reportar un problema</strong><br>
+          <span style="font-size:12px">Solo tarda unos segundos</span>
+          <br><button onclick="abrirLogin()">Ingresar ahora</button>
+        </div>
+        <div id="hint-mapa">📌 Hacé clic en el mapa para marcar la ubicación</div>
+        <div class="campo">
+          <label>Tipo de problema *</label>
+          <select id="cat" onchange="verificarForm()">
+            <option value="">— Seleccioná una categoría —</option>
+            <option>Bache / calles</option>
+            <option>Iluminación</option>
+            <option>Agua / cloacas</option>
+            <option>Basura / residuos</option>
+            <option>Seguridad</option>
+            <option>Espacios verdes</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Descripción *</label>
+          <textarea id="desc" placeholder="Describí el problema brevemente..." oninput="verificarForm()"></textarea>
+        </div>
+        <div class="campo">
+          <label>Foto (opcional)</label>
+          <input type="file" id="foto" accept="image/*" style="font-size:12px"/>
+        </div>
+        <button id="btn-enviar" disabled onclick="enviarReclamo()">Enviar reclamo</button>
+      </div>
+      <div id="tab-lista">
+        <div id="lista-reclamos"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LOGIN -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>Ingresar</h2>
+    <p>Necesitás una cuenta para poder enviar reclamos. Elegí cómo querés entrar:</p>
+    <div class="modal-btns">
+      <button class="modal-btn google" onclick="loginGoogle()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continuar con Google
+      </button>
+      <button class="modal-btn verde" onclick="mostrarFormManual()">📱 Ingresar con nombre y celular</button>
+      <button class="modal-btn cancelar" onclick="cerrarModal()">Cancelar</button>
+    </div>
+    <div id="modal-form-campos">
+      <hr style="margin: 14px 0; border-color: #eee;"/>
+      <div class="campo"><label>Nombre y apellido *</label><input type="text" id="m-nombre" placeholder="Juan Pérez"/></div>
+      <div class="campo"><label>Celular *</label><input type="tel" id="m-cel" placeholder="341 000-0000"/></div>
+      <div class="modal-btns">
+        <button class="modal-btn verde" onclick="loginManual()">Confirmar</button>
+        <button class="modal-btn cancelar" onclick="ocultarFormManual()">← Volver</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONFIGURACIÓN — REEMPLAZÁ ESTOS VALORES CON LOS TUYOS DE SUPABASE
+// ════════════════════════════════════════════════
+const SUPABASE_URL = 'TU_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ════════════════════════════════════════════════
+// MAPA — Pueblo Esther, Santa Fe, Argentina
+// ════════════════════════════════════════════════
+const COORDS_PUEBLO_ESTHER = [-33.0525, -60.5667];
+
+const mapa = L.map('mapa', { zoomControl: true }).setView(COORDS_PUEBLO_ESTHER, 14);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 19
+}).addTo(mapa);
+
+// ════════════════════════════════════════════════
+// ESTADO
+// ════════════════════════════════════════════════
+let usuario = null;
+let coordsSeleccionadas = null;
+let filtroActivo = 'todos';
+let todosReclamos = [];
+let marcadores = [];
+
+const CAT_CONFIG = {
+  'Bache / calles':  { color: '#d35400', emoji: '🕳', cls: 'cat-bache' },
+  'Iluminación':     { color: '#d4a017', emoji: '💡', cls: 'cat-luz' },
+  'Agua / cloacas':  { color: '#185FA5', emoji: '💧', cls: 'cat-agua' },
+  'Basura / residuos':{ color: '#2d7a4f', emoji: '🗑', cls: 'cat-basura' },
+  'Seguridad':       { color: '#c0392b', emoji: '🚨', cls: 'cat-seguridad' },
+  'Espacios verdes': { color: '#1D9E75', emoji: '🌳', cls: 'cat-verde' },
+  'Otro':            { color: '#888', emoji: '📌', cls: 'cat-otro' },
+};
+
+function crearIcono(cat) {
+  const cfg = CAT_CONFIG[cat] || CAT_CONFIG['Otro'];
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:32px;height:32px;border-radius:50%;background:${cfg.color};border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer">${cfg.emoji}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+}
+
+// ════════════════════════════════════════════════
+// CLIC EN MAPA
+// ════════════════════════════════════════════════
+let marcadorPendiente = null;
+
+mapa.on('click', (e) => {
+  coordsSeleccionadas = e.latlng;
+  if (marcadorPendiente) mapa.removeLayer(marcadorPendiente);
+  marcadorPendiente = L.marker(e.latlng, {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:28px;height:28px;border-radius:50%;background:#185FA5;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);animation:pulsar 1s ease-out"></div>`,
+      iconSize: [28, 28], iconAnchor: [14, 14]
+    })
+  }).addTo(mapa);
+  const hint = document.getElementById('hint-mapa');
+  hint.textContent = '✅ Ubicación marcada — completá el formulario';
+  hint.classList.add('ok');
+  verificarForm();
+  cambiarTab('form');
+});
+
+// ════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════
+async function inicializarAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) setUsuario(session.user);
+
+  // Login manual guardado en localStorage
+  const manual = localStorage.getItem('usuario_manual');
+  if (manual && !session) {
+    usuario = JSON.parse(manual);
+    actualizarUIAuth();
+  }
+
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) setUsuario(session.user);
+    else if (!localStorage.getItem('usuario_manual')) limpiarUsuario();
+  });
+}
+
+function setUsuario(user) {
+  usuario = { id: user.id, nombre: user.user_metadata?.full_name || user.email, email: user.email, tipo: 'google' };
+  actualizarUIAuth();
+}
+
+function actualizarUIAuth() {
+  if (usuario) {
+    document.getElementById('user-info').textContent = `👤 ${usuario.nombre}`;
+    document.getElementById('btn-login').style.display = 'none';
+    document.getElementById('btn-logout').style.display = 'block';
+    document.getElementById('auth-requerido').style.display = 'none';
+  } else {
+    document.getElementById('user-info').textContent = '';
+    document.getElementById('btn-login').style.display = 'flex';
+    document.getElementById('btn-logout').style.display = 'none';
+    document.getElementById('auth-requerido').style.display = 'block';
+  }
+}
+
+function limpiarUsuario() {
+  usuario = null;
+  actualizarUIAuth();
+}
+
+async function loginGoogle() {
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+}
+
+function mostrarFormManual() {
+  document.getElementById('modal-form-campos').classList.add('visible');
+}
+function ocultarFormManual() {
+  document.getElementById('modal-form-campos').classList.remove('visible');
+}
+
+function loginManual() {
+  const nombre = document.getElementById('m-nombre').value.trim();
+  const cel = document.getElementById('m-cel').value.trim();
+  if (!nombre || !cel) { mostrarToast('Completá nombre y celular'); return; }
+  usuario = { id: 'manual_' + Date.now(), nombre, cel, tipo: 'manual' };
+  localStorage.setItem('usuario_manual', JSON.stringify(usuario));
+  cerrarModal();
+  actualizarUIAuth();
+  mostrarToast(`Bienvenido/a, ${nombre}`);
+}
+
+async function cerrarSesion() {
+  localStorage.removeItem('usuario_manual');
+  await sb.auth.signOut();
+  limpiarUsuario();
+  mostrarToast('Sesión cerrada');
+}
+
+function abrirLogin() {
+  document.getElementById('modal-overlay').classList.add('visible');
+}
+function cerrarModal() {
+  document.getElementById('modal-overlay').classList.remove('visible');
+  ocultarFormManual();
+}
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-overlay')) cerrarModal();
+});
+
+// ════════════════════════════════════════════════
+// RECLAMOS
+// ════════════════════════════════════════════════
+async function cargarReclamos() {
+  const { data, error } = await sb
+    .from('reclamos')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    // DEMO: datos de ejemplo si no hay Supabase configurado
+    todosReclamos = [
+      { id:1, lat:-33.0510, lng:-60.5660, categoria:'Bache / calles', descripcion:'Bache grande en la esquina, peligroso para motos', nombre_autor:'Carlos V.', created_at: new Date(Date.now()-2*86400000).toISOString() },
+      { id:2, lat:-33.0530, lng:-60.5640, categoria:'Iluminación', descripcion:'Farola apagada hace más de un mes en calle Los Andes', nombre_autor:'Ana M.', created_at: new Date(Date.now()-5*86400000).toISOString() },
+      { id:3, lat:-33.0545, lng:-60.5680, categoria:'Basura / residuos', descripcion:'Montículo de escombros sin retirar hace semanas', nombre_autor:'Roberto P.', created_at: new Date(Date.now()-7*86400000).toISOString() },
+      { id:4, lat:-33.0500, lng:-60.5700, categoria:'Agua / cloacas', descripcion:'Pérdida de agua en la vereda desde hace días', nombre_autor:'Vecino/a', created_at: new Date(Date.now()-14*86400000).toISOString() },
+      { id:5, lat:-33.0560, lng:-60.5630, categoria:'Seguridad', descripcion:'Pasaje sin iluminación, muy inseguro de noche', nombre_autor:'Vecino/a', created_at: new Date(Date.now()-21*86400000).toISOString() },
+    ];
+  } else {
+    todosReclamos = data || [];
+  }
+  actualizarContadores();
+  renderizarMapa();
+  renderizarLista();
+}
+
+async function enviarReclamo() {
+  if (!usuario) { abrirLogin(); return; }
+  if (!coordsSeleccionadas) { mostrarToast('Hacé clic en el mapa para marcar la ubicación'); return; }
+
+  const cat = document.getElementById('cat').value;
+  const desc = document.getElementById('desc').value.trim();
+  if (!cat || desc.length < 5) return;
+
+  document.getElementById('btn-enviar').disabled = true;
+  document.getElementById('btn-enviar').textContent = 'Enviando...';
+
+  const nuevo = {
+    lat: coordsSeleccionadas.lat,
+    lng: coordsSeleccionadas.lng,
+    categoria: cat,
+    descripcion: desc,
+    nombre_autor: usuario.nombre,
+    celular_autor: usuario.cel || null,
+    user_id: usuario.id,
+  };
+
+  const { error } = await sb.from('reclamos').insert([nuevo]);
+
+  if (error) {
+    // Demo mode: agregar localmente
+    todosReclamos.unshift({ ...nuevo, id: Date.now(), created_at: new Date().toISOString() });
+    mostrarToast('✅ Reclamo registrado (modo demo)');
+  } else {
+    mostrarToast('✅ Reclamo enviado. ¡Gracias vecino/a!');
+  }
+
+  // Reset
+  document.getElementById('cat').value = '';
+  document.getElementById('desc').value = '';
+  document.getElementById('foto').value = '';
+  if (marcadorPendiente) { mapa.removeLayer(marcadorPendiente); marcadorPendiente = null; }
+  coordsSeleccionadas = null;
+  const hint = document.getElementById('hint-mapa');
+  hint.textContent = '📌 Hacé clic en el mapa para marcar la ubicación';
+  hint.classList.remove('ok');
+  document.getElementById('btn-enviar').textContent = 'Enviar reclamo';
+
+  actualizarContadores();
+  renderizarMapa();
+  renderizarLista();
+}
+
+function verificarForm() {
+  const cat = document.getElementById('cat').value;
+  const desc = document.getElementById('desc').value.trim();
+  document.getElementById('btn-enviar').disabled = !(coordsSeleccionadas && cat && desc.length > 4);
+}
+
+// ════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════
+function renderizarMapa() {
+  marcadores.forEach(m => mapa.removeLayer(m));
+  marcadores = [];
+  const filtrados = filtroActivo === 'todos' ? todosReclamos : todosReclamos.filter(r => r.categoria === filtroActivo);
+  filtrados.forEach(r => {
+    const m = L.marker([r.lat, r.lng], { icon: crearIcono(r.categoria) })
+      .addTo(mapa)
+      .bindPopup(`
+        <div style="min-width:180px">
+          <strong style="font-size:14px">${CAT_CONFIG[r.categoria]?.emoji || '📌'} ${r.categoria}</strong><br>
+          <span style="font-size:13px;color:#333">${r.descripcion}</span><br>
+          <span style="font-size:11px;color:#888;margin-top:4px;display:block">
+            👤 ${r.nombre_autor || 'Vecino/a'} · ${formatearFecha(r.created_at)}
+          </span>
+        </div>
+      `);
+    marcadores.push(m);
+  });
+}
+
+function renderizarLista() {
+  const filtrados = filtroActivo === 'todos' ? todosReclamos : todosReclamos.filter(r => r.categoria === filtroActivo);
+  const contenedor = document.getElementById('lista-reclamos');
+  if (filtrados.length === 0) {
+    contenedor.innerHTML = '<div class="empty-state">No hay reclamos en esta categoría todavía.</div>';
+    return;
+  }
+  contenedor.innerHTML = filtrados.slice(0, 30).map(r => {
+    const cfg = CAT_CONFIG[r.categoria] || CAT_CONFIG['Otro'];
+    return `
+      <div class="reclamo-card" onclick="irAReclamo(${r.lat},${r.lng})">
+        <span class="badge ${cfg.cls}">${cfg.emoji} ${r.categoria}</span>
+        <div class="desc">${r.descripcion}</div>
+        <div class="meta">👤 ${r.nombre_autor || 'Vecino/a'} · ${formatearFecha(r.created_at)}</div>
+      </div>`;
+  }).join('');
+}
+
+function irAReclamo(lat, lng) {
+  mapa.setView([lat, lng], 17);
+  cambiarTab('form');
+}
+
+function actualizarContadores() {
+  const ahora = new Date();
+  const semanaAtras = new Date(ahora - 7 * 86400000);
+  const mesAtras = new Date(ahora - 30 * 86400000);
+  document.getElementById('cnt-total').textContent = todosReclamos.length;
+  document.getElementById('cnt-semana').textContent = todosReclamos.filter(r => new Date(r.created_at) > semanaAtras).length;
+  document.getElementById('cnt-mes').textContent = todosReclamos.filter(r => new Date(r.created_at) > mesAtras).length;
+}
+
+// ════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════
+function filtrar(cat) {
+  filtroActivo = cat;
+  document.querySelectorAll('.filtro-btn').forEach(b => {
+    const match = cat === 'todos' ? b.textContent.includes('Todos') : b.textContent.includes(cat.split('/')[0].trim()) || b.textContent.includes(cat);
+    b.classList.toggle('activo', match);
+  });
+  renderizarMapa();
+  renderizarLista();
+}
+
+function cambiarTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('activo', (i === 0) === (tab === 'form')));
+  document.getElementById('tab-form').classList.toggle('visible', tab === 'form');
+  document.getElementById('tab-lista').classList.toggle('visible', tab === 'lista');
+}
+
+function formatearFecha(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'ahora';
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `hace ${d} día${d>1?'s':''}`;
+  const w = Math.floor(d / 7);
+  if (w < 4) return `hace ${w} semana${w>1?'s':''}`;
+  return new Date(iso).toLocaleDateString('es-AR', { day:'numeric', month:'short' });
+}
+
+let toastTimer;
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('visible'), 3500);
+}
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+inicializarAuth().then(() => {
+  if (!usuario) document.getElementById('auth-requerido').style.display = 'block';
+});
+cargarReclamos();
+</script>
+</body>
+</html>
