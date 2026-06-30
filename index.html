@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css"/>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -72,7 +73,11 @@
     cursor: pointer;
     font-family: inherit;
     transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
+  .filtro-btn i { font-size: 14px; }
   .filtro-btn:hover { border-color: var(--verde); color: var(--verde); }
   .filtro-btn.activo { background: var(--verde); color: white; border-color: var(--verde); }
 
@@ -213,7 +218,7 @@
 
 <div id="header">
   <div>
-    <h1>📍 Pueblo Esther — Reclamos vecinales</h1>
+    <h1><i class="ti ti-map-pin-filled" aria-hidden="true"></i> Pueblo Esther — Reclamos vecinales</h1>
     <p>Marcá un problema en el mapa y ayudá a mejorar el barrio</p>
   </div>
   <div id="header-right">
@@ -227,14 +232,14 @@
 </div>
 
 <div id="filtros">
-  <button class="filtro-btn activo" onclick="filtrar('todos')">🗺 Todos</button>
-  <button class="filtro-btn" onclick="filtrar('Bache / calles')">🕳 Baches</button>
-  <button class="filtro-btn" onclick="filtrar('Iluminación')">💡 Iluminación</button>
-  <button class="filtro-btn" onclick="filtrar('Agua / cloacas')">💧 Agua</button>
-  <button class="filtro-btn" onclick="filtrar('Basura / residuos')">🗑 Basura</button>
-  <button class="filtro-btn" onclick="filtrar('Seguridad')">🚨 Seguridad</button>
-  <button class="filtro-btn" onclick="filtrar('Espacios verdes')">🌳 Espacios verdes</button>
-  <button class="filtro-btn" onclick="filtrar('Otro')">📌 Otro</button>
+  <button class="filtro-btn activo" onclick="filtrar('todos')"><i class="ti ti-map-2" aria-hidden="true"></i> Todos</button>
+  <button class="filtro-btn" onclick="filtrar('Bache / calles')"><i class="ti ti-road" aria-hidden="true"></i> Baches</button>
+  <button class="filtro-btn" onclick="filtrar('Iluminación')"><i class="ti ti-bulb" aria-hidden="true"></i> Iluminación</button>
+  <button class="filtro-btn" onclick="filtrar('Agua / cloacas')"><i class="ti ti-droplet" aria-hidden="true"></i> Agua</button>
+  <button class="filtro-btn" onclick="filtrar('Basura / residuos')"><i class="ti ti-trash" aria-hidden="true"></i> Basura</button>
+  <button class="filtro-btn" onclick="filtrar('Seguridad')"><i class="ti ti-shield-exclamation" aria-hidden="true"></i> Seguridad</button>
+  <button class="filtro-btn" onclick="filtrar('Espacios verdes')"><i class="ti ti-tree" aria-hidden="true"></i> Espacios verdes</button>
+  <button class="filtro-btn" onclick="filtrar('Otro')"><i class="ti ti-dots" aria-hidden="true"></i> Otro</button>
 </div>
 
 <div id="layout">
@@ -246,8 +251,8 @@
       <div class="contador"><div class="num" id="cnt-mes">—</div><div class="lbl">este mes</div></div>
     </div>
     <div id="panel-tabs">
-      <button class="tab-btn activo" onclick="cambiarTab('form')">➕ Nuevo</button>
-      <button class="tab-btn" onclick="cambiarTab('lista')">📋 Reclamos</button>
+      <button class="tab-btn activo" onclick="cambiarTab('form')"><i class="ti ti-plus" aria-hidden="true"></i> Nuevo</button>
+      <button class="tab-btn" onclick="cambiarTab('lista')"><i class="ti ti-list-details" aria-hidden="true"></i> Reclamos</button>
     </div>
     <div id="panel-contenido">
       <div id="tab-form" class="visible">
@@ -256,7 +261,7 @@
           <span style="font-size:12px">Solo tarda unos segundos</span>
           <br><button onclick="abrirLogin()">Ingresar ahora</button>
         </div>
-        <div id="hint-mapa">📌 Hacé clic en el mapa para marcar la ubicación</div>
+        <div id="hint-mapa"><i class="ti ti-hand-click" aria-hidden="true"></i> Hacé clic en el mapa para marcar la ubicación</div>
         <div class="campo">
           <label>Tipo de problema *</label>
           <select id="cat" onchange="verificarForm()">
@@ -297,7 +302,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Continuar con Google
       </button>
-      <button class="modal-btn verde" onclick="mostrarFormManual()">📱 Ingresar con nombre y celular</button>
+      <button class="modal-btn verde" onclick="mostrarFormManual()"><i class="ti ti-device-mobile" aria-hidden="true"></i> Ingresar con nombre y celular</button>
       <button class="modal-btn cancelar" onclick="cerrarModal()">Cancelar</button>
     </div>
     <div id="modal-form-campos">
@@ -345,22 +350,22 @@ let todosReclamos = [];
 let marcadores = [];
 
 const CAT_CONFIG = {
-  'Bache / calles':  { color: '#d35400', emoji: '🕳', cls: 'cat-bache' },
-  'Iluminación':     { color: '#d4a017', emoji: '💡', cls: 'cat-luz' },
-  'Agua / cloacas':  { color: '#185FA5', emoji: '💧', cls: 'cat-agua' },
-  'Basura / residuos':{ color: '#2d7a4f', emoji: '🗑', cls: 'cat-basura' },
-  'Seguridad':       { color: '#c0392b', emoji: '🚨', cls: 'cat-seguridad' },
-  'Espacios verdes': { color: '#1D9E75', emoji: '🌳', cls: 'cat-verde' },
-  'Otro':            { color: '#888', emoji: '📌', cls: 'cat-otro' },
+  'Bache / calles':  { color: '#d35400', icon: 'ti-road', cls: 'cat-bache' },
+  'Iluminación':     { color: '#d4a017', icon: 'ti-bulb', cls: 'cat-luz' },
+  'Agua / cloacas':  { color: '#185FA5', icon: 'ti-droplet', cls: 'cat-agua' },
+  'Basura / residuos':{ color: '#2d7a4f', icon: 'ti-trash', cls: 'cat-basura' },
+  'Seguridad':       { color: '#c0392b', icon: 'ti-shield-exclamation', cls: 'cat-seguridad' },
+  'Espacios verdes': { color: '#1D9E75', icon: 'ti-tree', cls: 'cat-verde' },
+  'Otro':            { color: '#888', icon: 'ti-dots', cls: 'cat-otro' },
 };
 
 function crearIcono(cat) {
   const cfg = CAT_CONFIG[cat] || CAT_CONFIG['Otro'];
   return L.divIcon({
     className: '',
-    html: `<div style="width:32px;height:32px;border-radius:50%;background:${cfg.color};border:3px solid white;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,0.3);cursor:pointer">${cfg.emoji}</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    html: `<div style="width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${cfg.color};border:3px solid white;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer"><i class="ti ${cfg.icon}" style="transform:rotate(45deg);color:white;font-size:16px"></i></div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 32],
   });
 }
 
@@ -380,7 +385,7 @@ mapa.on('click', (e) => {
     })
   }).addTo(mapa);
   const hint = document.getElementById('hint-mapa');
-  hint.textContent = '✅ Ubicación marcada — completá el formulario';
+  hint.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Ubicación marcada — completá el formulario';
   hint.classList.add('ok');
   verificarForm();
   cambiarTab('form');
@@ -413,7 +418,7 @@ function setUsuario(user) {
 
 function actualizarUIAuth() {
   if (usuario) {
-    document.getElementById('user-info').textContent = `👤 ${usuario.nombre}`;
+    document.getElementById('user-info').innerHTML = `<i class="ti ti-user-circle" aria-hidden="true"></i> ${usuario.nombre}`;
     document.getElementById('btn-login').style.display = 'none';
     document.getElementById('btn-logout').style.display = 'block';
     document.getElementById('auth-requerido').style.display = 'none';
@@ -525,9 +530,9 @@ async function enviarReclamo() {
   if (error) {
     // Demo mode: agregar localmente
     todosReclamos.unshift({ ...nuevo, id: Date.now(), created_at: new Date().toISOString() });
-    mostrarToast('✅ Reclamo registrado (modo demo)');
+    mostrarToast('Reclamo registrado (modo demo)');
   } else {
-    mostrarToast('✅ Reclamo enviado. ¡Gracias vecino/a!');
+    mostrarToast('Reclamo enviado. ¡Gracias vecino/a!');
   }
 
   // Reset
@@ -537,7 +542,7 @@ async function enviarReclamo() {
   if (marcadorPendiente) { mapa.removeLayer(marcadorPendiente); marcadorPendiente = null; }
   coordsSeleccionadas = null;
   const hint = document.getElementById('hint-mapa');
-  hint.textContent = '📌 Hacé clic en el mapa para marcar la ubicación';
+  hint.innerHTML = '<i class="ti ti-hand-click" aria-hidden="true"></i> Hacé clic en el mapa para marcar la ubicación';
   hint.classList.remove('ok');
   document.getElementById('btn-enviar').textContent = 'Enviar reclamo';
 
@@ -564,10 +569,10 @@ function renderizarMapa() {
       .addTo(mapa)
       .bindPopup(`
         <div style="min-width:180px">
-          <strong style="font-size:14px">${CAT_CONFIG[r.categoria]?.emoji || '📌'} ${r.categoria}</strong><br>
+          <strong style="font-size:14px"><i class="ti ${CAT_CONFIG[r.categoria]?.icon || 'ti-map-pin'}" style="color:${CAT_CONFIG[r.categoria]?.color || '#888'}"></i> ${r.categoria}</strong><br>
           <span style="font-size:13px;color:#333">${r.descripcion}</span><br>
           <span style="font-size:11px;color:#888;margin-top:4px;display:block">
-            👤 ${r.nombre_autor || 'Vecino/a'} · ${formatearFecha(r.created_at)}
+            <i class="ti ti-user" aria-hidden="true"></i> ${r.nombre_autor || 'Vecino/a'} · ${formatearFecha(r.created_at)}
           </span>
         </div>
       `);
@@ -586,9 +591,9 @@ function renderizarLista() {
     const cfg = CAT_CONFIG[r.categoria] || CAT_CONFIG['Otro'];
     return `
       <div class="reclamo-card" onclick="irAReclamo(${r.lat},${r.lng})">
-        <span class="badge ${cfg.cls}">${cfg.emoji} ${r.categoria}</span>
+        <span class="badge ${cfg.cls}"><i class="ti ${cfg.icon}" aria-hidden="true"></i> ${r.categoria}</span>
         <div class="desc">${r.descripcion}</div>
-        <div class="meta">👤 ${r.nombre_autor || 'Vecino/a'} · ${formatearFecha(r.created_at)}</div>
+        <div class="meta"><i class="ti ti-user" aria-hidden="true"></i> ${r.nombre_autor || 'Vecino/a'} · ${formatearFecha(r.created_at)}</div>
       </div>`;
   }).join('');
 }
