@@ -209,7 +209,8 @@
   /* RESPONSIVE */
   @media (max-width: 640px) {
     #layout { flex-direction: column; height: auto; }
-    #mapa { height: 50vh; }
+    #mapa { height: 60vh; min-height: 320px; width: 100%; flex: none; }
+    #panel { flex: none; }
     #panel { width: 100%; height: auto; max-height: 50vh; border-left: none; border-top: 1px solid var(--borde); }
   }
 </style>
@@ -662,6 +663,11 @@ inicializarAuth().then(() => {
   if (!usuario) document.getElementById('auth-requerido').style.display = 'block';
 });
 cargarReclamos();
+
+// Forzar a Leaflet a recalcular el tamaño del mapa (necesario en mobile)
+setTimeout(() => mapa.invalidateSize(), 200);
+window.addEventListener('resize', () => mapa.invalidateSize());
+window.addEventListener('orientationchange', () => setTimeout(() => mapa.invalidateSize(), 300));
 </script>
 </body>
 </html>
