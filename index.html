@@ -310,6 +310,7 @@
       <hr style="margin: 14px 0; border-color: #eee;"/>
       <div class="campo"><label>Nombre y apellido *</label><input type="text" id="m-nombre" placeholder="Juan Pérez"/></div>
       <div class="campo"><label>Celular *</label><input type="tel" id="m-cel" placeholder="341 000-0000"/></div>
+      <div class="campo"><label>Email (opcional)</label><input type="email" id="m-email" placeholder="juan@email.com"/></div>
       <div class="modal-btns">
         <button class="modal-btn verde" onclick="loginManual()">Confirmar</button>
         <button class="modal-btn cancelar" onclick="ocultarFormManual()">← Volver</button>
@@ -453,8 +454,9 @@ function ocultarFormManual() {
 function loginManual() {
   const nombre = document.getElementById('m-nombre').value.trim();
   const cel = document.getElementById('m-cel').value.trim();
+  const email = document.getElementById('m-email').value.trim();
   if (!nombre || !cel) { mostrarToast('Completá nombre y celular'); return; }
-  usuario = { id: 'manual_' + Date.now(), nombre, cel, tipo: 'manual' };
+  usuario = { id: 'manual_' + Date.now(), nombre, cel, email: email || null, tipo: 'manual' };
   localStorage.setItem('usuario_manual', JSON.stringify(usuario));
   cerrarModal();
   actualizarUIAuth();
@@ -523,6 +525,7 @@ async function enviarReclamo() {
     descripcion: desc,
     nombre_autor: usuario.nombre,
     celular_autor: usuario.cel || null,
+    email_autor: usuario.email || null,
     user_id: usuario.id,
   };
 
